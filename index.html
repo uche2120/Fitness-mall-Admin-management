@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Products | Legendary Fitness</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-title">
+        <h1><i class="fas fa-dumbbell"></i> Admin Dashboard</h1>
+        <button class="mobile-menu-btn" id="mobileMenuBtn">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+      <div id="user-area" class="hidden">
+        <div class="user-info" id="userInfo">
+          <div class="avatar" id="user-avatar">U</div>
+          <span id="user-email"></span>
+          <button id="signOut" class="btn btn-outline">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <section id="auth-section">
+      <h2>Authentication</h2>
+      <div id="login-area">
+        <div class="card">
+          <div class="auth-form">
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input id="email" type="email" placeholder="Enter your email" />
+            </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input id="password" type="password" placeholder="Enter your password" />
+            </div>
+            <div class="form-group">
+              <button id="signIn" class="btn btn-primary">Sign In</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="product-form-section" class="hidden">
+      <div class="section-title">
+        <h2>Product Management</h2>
+        <button id="newProduct" class="btn btn-outline"><i class="fas fa-plus"></i> New Product</button>
+      </div>
+      
+      <div class="card">
+        <form id="productForm">
+          <input id="prod-id" type="hidden" />
+          <div class="form-group">
+            <label for="name">Product Name</label>
+            <input id="name" placeholder="Enter product name" required />
+          </div>
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" placeholder="Enter product description"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="category">Category</label>
+            <select id="category" required>
+              <option value="">Select a category</option>
+              <option value="abs">Abs</option>
+              <option value="benches">Benches</option>
+              <option value="accessories">Accessories</option>
+              <option value="bikes">Bikes</option>
+              <option value="boxing">Boxing | Kicking</option>
+              <option value="physio">Physio-Rehab</option>
+              <option value="sauna">Sauna | Spa</option>
+              <option value="sports">Sports | Games</option>
+              <option value="commercial">Commercial</option>
+              <option value="treadmills">Treadmills</option>
+              <option value="wears">Wears</option>
+              <option value="weights">Weights</option>
+              <option value="auction">Products on Auction</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="price">Price ($)</label>
+            <input id="price" placeholder="0.00" required type="number" step="0.01" min="0" />
+          </div>
+          <div class="form-group">
+            <label for="imageUrl">Product Image URL</label>
+            <input id="imageUrl" type="text" placeholder="Paste image URL from ImgBB or similar service" />
+            <div class="url-help">
+              <strong>How to add images:</strong>
+              <ol style="margin-top: 8px; margin-left: 20px;">
+                <li>Upload your image to a free service like <a href="https://imgbb.com/" target="_blank">ImgBB</a></li>
+                <li>Copy the direct image URL</li>
+                <li>Paste it in the field above</li>
+              </ol>
+            </div>
+          </div>
+          <div class="form-group">
+            <button id="saveProduct" class="btn btn-primary"><i class="fas fa-save"></i> Save Product</button>
+            <button id="cancelEdit" type="button" class="btn btn-outline hidden"><i class="fas fa-times"></i> Cancel</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="products-section" class="hidden">
+      <div class="section-title">
+        <h2>Products</h2>
+        <div id="products-count">0 products</div>
+      </div>
+      
+      <div id="adminProducts" class="product-grid">
+        <div class="loading">Loading products...</div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      signOut, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      getDocs, 
+      deleteDoc, 
+      doc, 
+      updateDoc, 
+      serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDQM3YauGK-Tj1VlgysvPmgR3JZL-jgM9Q",
+      authDomain: "legendary-fitness-mall.firebaseapp.com",
+      projectId: "legendary-fitness-mall",
+      storageBucket: "legendary-fitness-mall.firebasestorage.app",
+      messagingSenderId: "582763228257",
+      appId: "1:582763228257:web:2515ec627780051f1e4e20",
+      measurementId: "G-3NEWRS8SLW"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // DOM Elements
+    const emailInput = document.getElementById('email');
+    const pwdInput = document.getElementById('password');
+    const signInBtn = document.getElementById('signIn');
+    const signOutBtn = document.getElementById('signOut');
+    const loginArea = document.getElementById('login-area');
+    const userArea = document.getElementById('user-area');
+    const userEmail = document.getElementById('user-email');
+    const userAvatar = document.getElementById('user-avatar');
+    const userInfo = document.getElementById('userInfo');
+    const productFormSection = document.getElementById('product-form-section');
+    const productsSection = document.getElementById('products-section');
+    const adminProducts = document.getElementById('adminProducts');
+    const productsCount = document.getElementById('products-count');
+    const prodForm = document.getElementById('productForm');
+    const prodIdInput = document.getElementById('prod-id');
+    const nameInput = document.getElementById('name');
+    const descInput = document.getElementById('description');
+    const categoryInput = document.getElementById('category');
+    const priceInput = document.getElementById('price');
+    const imageUrlInput = document.getElementById('imageUrl');
+    const saveBtn = document.getElementById('saveProduct');
+    const newProductBtn = document.getElementById('newProduct');
+    const cancelEditBtn = document.getElementById('cancelEdit');
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+
+    // Authentication
+    signInBtn.onclick = async (e) => {
+      e.preventDefault();
+      try {
+        await signInWithEmailAndPassword(auth, emailInput.value, pwdInput.value);
+      } catch (error) {
+        showAlert('Error signing in: ' + error.message, 'error');
+      }
+    };
+
+    signOutBtn.onclick = () => signOut(auth);
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        // User is signed in
+        loginArea.style.display = 'none';
+        userArea.classList.remove('hidden');
+        productFormSection.classList.remove('hidden');
+        productsSection.classList.remove('hidden');
+        
+        // Update user info
+        userEmail.textContent = user.email;
+        userAvatar.textContent = user.email.charAt(0).toUpperCase();
+        
+        loadAdminProducts();
+      } else {
+        // User is signed out
+        loginArea.style.display = 'block';
+        userArea.classList.add('hidden');
+        productFormSection.classList.add('hidden');
+        productsSection.classList.add('hidden');
+        adminProducts.innerHTML = '<div class="loading">Please sign in to view products</div>';
+      }
+    });
+
+    // Mobile menu toggle
+    mobileMenuBtn.addEventListener('click', () => {
+      userInfo.classList.toggle('active');
+    });
+
+    // Product form management
+    newProductBtn.onclick = () => {
+      prodForm.reset();
+      prodIdInput.value = '';
+      cancelEditBtn.classList.add('hidden');
+      saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Product';
+    };
+
+    cancelEditBtn.onclick = () => {
+      prodForm.reset();
+      prodIdInput.value = '';
+      cancelEditBtn.classList.add('hidden');
+      saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Product';
+    };
+
+    saveBtn.onclick = async (e) => {
+      e.preventDefault();
+      
+      if (!nameInput.value || !priceInput.value || !categoryInput.value) {
+        showAlert('Please fill in all required fields', 'error');
+        return;
+      }
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        const payload = {
+          name: nameInput.value,
+          description: descInput.value,
+          category: categoryInput.value,
+          price: parseFloat(priceInput.value),
+          imageUrl: imageUrlInput.value || null,
+          updatedAt: serverTimestamp()
+        };
+
+        if (prodIdInput.value) {
+          // Update existing product
+          const docRef = doc(db, 'products', prodIdInput.value);
+          await updateDoc(docRef, payload);
+          showAlert('Product updated successfully!', 'success');
+        } else {
+          // Add new product
+          payload.createdAt = serverTimestamp();
+          await addDoc(collection(db, 'products'), payload);
+          showAlert('Product added successfully!', 'success');
+        }
+
+        // Reset form and reload products
+        prodForm.reset();
+        prodIdInput.value = '';
+        cancelEditBtn.classList.add('hidden');
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Product';
+        loadAdminProducts();
+      } catch (error) {
+        console.error(error);
+        showAlert('Error saving product: ' + error.message, 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    };
+
+    // Load products for admin
+    async function loadAdminProducts() {
+      try {
+        adminProducts.innerHTML = '<div class="loading">Loading products...</div>';
+        
+        const snap = await getDocs(collection(db, 'products'));
+        const products = [];
+        
+        snap.forEach(docSnap => {
+          products.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        // Update products count
+        productsCount.textContent = `${products.length} product${products.length !== 1 ? 's' : ''}`;
+        
+        if (products.length === 0) {
+          adminProducts.innerHTML = '<div class="loading">No products found. Add your first product!</div>';
+          return;
+        }
+
+        // Sort by creation date (newest first)
+        products.sort((a, b) => {
+          const aTime = a.createdAt?.toDate()?.getTime() || 0;
+          const bTime = b.createdAt?.toDate()?.getTime() || 0;
+          return bTime - aTime;
+        });
+
+        // Render products
+        adminProducts.innerHTML = '';
+        products.forEach(product => {
+          const productElement = document.createElement('div');
+          productElement.className = 'product-card';
+          
+          // Format category for display
+          const categoryDisplay = formatCategory(product.category);
+          
+          productElement.innerHTML = `
+            <div class="product-image" style="background-image: url('${product.imageUrl || 'https://via.placeholder.com/300x180?text=No+Image'}')"></div>
+            <div class="product-details">
+              <div class="product-name">${product.name}</div>
+              ${product.category ? `<div class="product-category">${categoryDisplay}</div>` : ''}
+              <div class="product-price">$${(product.price || 0).toFixed(2)}</div>
+              <div class="product-description">${product.description || 'No description provided'}</div>
+              <div class="product-actions">
+                <button data-id="${product.id}" class="btn btn-primary edit-btn"><i class="fas fa-edit"></i> Edit</button>
+                <button data-id="${product.id}" class="btn btn-danger delete-btn"><i class="fas fa-trash"></i> Delete</button>
+              </div>
+            </div>
+          `;
+          adminProducts.appendChild(productElement);
+        });
+
+        // Attach event listeners
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.onclick = async (e) => {
+            const id = e.target.dataset.id;
+            const productName = products.find(p => p.id === id)?.name || 'this product';
+            
+            if (!confirm(`Are you sure you want to delete "${productName}"?`)) return;
+            
+            try {
+              await deleteDoc(doc(db, 'products', id));
+              showAlert('Product deleted successfully!', 'success');
+              loadAdminProducts();
+            } catch (error) {
+              showAlert('Error deleting product: ' + error.message, 'error');
+            }
+          };
+        });
+
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+          btn.onclick = async (e) => {
+            const id = e.target.dataset.id;
+            const product = products.find(p => p.id === id);
+            
+            if (product) {
+              // Populate form with product data
+              prodIdInput.value = id;
+              nameInput.value = product.name || '';
+              descInput.value = product.description || '';
+              categoryInput.value = product.category || '';
+              priceInput.value = product.price || '';
+              imageUrlInput.value = product.imageUrl || '';
+              
+              // Update UI for edit mode
+              saveBtn.innerHTML = '<i class="fas fa-save"></i> Update Product';
+              cancelEditBtn.classList.remove('hidden');
+              
+              // Scroll to form
+              productFormSection.scrollIntoView({ behavior: 'smooth' });
+            }
+          };
+        });
+      } catch (error) {
+        console.error(error);
+        adminProducts.innerHTML = '<div class="loading">Error loading products</div>';
+        showAlert('Error loading products: ' + error.message, 'error');
+      }
+    }
+
+    // Helper function to format category for display
+    function formatCategory(category) {
+      const categoryMap = {
+        'abs': 'Abs',
+        'benches': 'Benches',
+        'accessories': 'Accessories',
+        'bikes': 'Bikes',
+        'boxing': 'Boxing | Kicking',
+        'physio': 'Physio-Rehab',
+        'sauna': 'Sauna | Spa',
+        'sports': 'Sports | Games',
+        'commercial': 'Commercial',
+        'treadmills': 'Treadmills',
+        'wears': 'Wears',
+        'weights': 'Weights',
+        'auction': 'Products on Auction'
+      };
+      
+      return categoryMap[category] || category;
+    }
+
+    // Helper function to show alerts
+    function showAlert(message, type) {
+      // Remove existing alerts
+      const existingAlert = document.querySelector('.alert');
+      if (existingAlert) {
+        existingAlert.remove();
+      }
+      
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      
+      // Insert at the top of the container
+      const container = document.querySelector('.container');
+      container.insertBefore(alert, container.firstChild);
+      
+      // Auto remove after 5 seconds
+      setTimeout(() => {
+        if (alert.parentNode) {
+          alert.remove();
+        }
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
